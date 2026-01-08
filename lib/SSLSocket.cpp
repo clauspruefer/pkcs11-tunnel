@@ -63,7 +63,7 @@ void SSLSocket::setupSSLEngine()
     const char* LoadedEngineID = ENGINE_get_id(PKCS11Engine);
     DBG(100, "Loaded engine with id:" << LoadedEngineID);
 
-    ENGINE_set_default(PKCS11Engine, ENGINE_METHOD_RSA | ENGINE_METHOD_ECDSA | ENGINE_METHOD_ECDH);
+    ENGINE_set_default(PKCS11Engine, ENGINE_METHOD_RSA | ENGINE_METHOD_EC);
 
     const char *Prompt = "Enter User PIN:";
 
@@ -93,23 +93,26 @@ void SSLSocket::setupSSL()
         setupSSLEngine();
     }
 
-    //- init ssl base settings
-    SSL_load_error_strings();
-    SSL_library_init();
-    OpenSSL_add_all_algorithms();
-    OpenSSL_add_all_ciphers();
-    OpenSSL_add_all_digests();
-
     //- setup client SSL context
     if (Config::Type == "client") {
-        SSLContext = SSL_CTX_new(TLSv1_2_client_method());
+        SSLContext = SSL_CTX_new(TLS_client_method());
+        if (SSLContext == NULL) {
+            cout << "SSL client context creation error." << endl;
+            exit(EXIT_FAILURE);
+        }
+        SSL_CTX_set_min_proto_version(SSLContext, TLS1_2_VERSION);
     }
 
     //- setup server SSL context
     if (Config::Type == "server") {
 
         //- set server method
-        SSLContext = SSL_CTX_new(TLSv1_2_server_method());
+        SSLContext = SSL_CTX_new(TLS_server_method());
+        if (SSLContext == NULL) {
+            cout << "SSL server context creation error." << endl;
+            exit(EXIT_FAILURE);
+        }
+        SSL_CTX_set_min_proto_version(SSLContext, TLS1_2_VERSION);
 
         //- enable client cert verification
         SSL_CTX_set_verify(SSLContext, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
